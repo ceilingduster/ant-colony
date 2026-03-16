@@ -4,6 +4,8 @@
 
 This was meant to be an autonomous 'life' experiment where LLM-powered 'ants' live, build, collaborate, and evolve inside a sandboxed Docker environment with zero human intervention.  On several runs, it built me a car dealership app, a calculator (converting metric to imperial) but mostly built a ton of hello world examples.
 
+I wanted to see if it was possible to build something with AI that could create applications and platforms on its own, with very little guidance from me. The idea was to only give it a simple prompt instead of detailed instructions about exactly what to build.  The detailed instructions is contained within the [SKILLS](https://github.com/ceilingduster/ant-colony/blob/main/dna/SKILLS.md).
+
 ## Details
 
 Every ant makes API calls every cycle, 24/7. If you point this at a cloud provider such as OpenAI, **it will burn through your token budget fast**. Use a local instance of Ollama for extended runs, or set strict rate limits in your proxy config. You have been warned!
