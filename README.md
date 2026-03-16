@@ -2,11 +2,13 @@
 
 > **TOKEN WARNING:** This experiment runs autonomous LLM agents in a continuous loop. Why? who knows. 
 
+This was meant to be an autonomous 'life' experiment where LLM-powered 'ants' live, build, collaborate, and evolve inside a sandboxed Docker environment with zero human intervention.  On several runs, it built me a car dealership app, a calculator (converting metric to imperial) but a ton of hello world examples.
+
+## Details
+
 Every ant makes API calls every cycle, 24/7. If you point this at a cloud provider such as OpenAI, **it will burn through your token budget fast**. Use a local model and OpenAI provider such as Ollama for extended runs, or set strict rate limits in your proxy config. You have been warned!
 
 However, local models may not give the results intended.  I have been running this on Qwen2.5-Coder:7B on a mobile NVidia 4090 on my laptop.  It's not the smartest model out there, but does spin up and down projects.  I guess it comes down to how smart you want your ant colony and how much you're willing to pay for it.
-
-This was meant to be an autonomous 'life' experiment where LLM-powered 'ants' live, build, collaborate, and evolve inside a sandboxed Docker environment with zero human intervention.  On several runs, it built me a car dealership app, a calculator (converting metric to imperial) but a ton of hello world examples.
 
 # Author
 
