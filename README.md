@@ -2,7 +2,7 @@
 
 > **TOKEN WARNING:** This experiment runs autonomous LLM agents in a continuous loop. Why? who knows. 
 
-This was meant to be an autonomous 'life' experiment where LLM-powered 'ants' live, build, collaborate, and evolve inside a sandboxed Docker environment with zero human intervention.  On several runs, it built me a car dealership app, a calculator (converting metric to imperial) but a ton of hello world examples.
+This was meant to be an autonomous 'life' experiment where LLM-powered 'ants' live, build, collaborate, and evolve inside a sandboxed Docker environment with zero human intervention.  On several runs, it built me a car dealership app, a calculator (converting metric to imperial) but mopstly built a ton of hello world examples.
 
 ## Details
 
