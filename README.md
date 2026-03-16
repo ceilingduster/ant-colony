@@ -15,8 +15,8 @@ Ian Redden <github.com/ceilingduster>
 
 # Pictures
 
-![Image 1](docs/one.png)
-![Image 1](docs/two.png)
+![Image 1](images/one.png)
+![Image 1](images/two.png)
 
 # Quick Install
 
