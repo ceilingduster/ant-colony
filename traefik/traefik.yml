@@ -1,0 +1,20 @@
+# Traefik — One-Way Looking Glass
+# Allows the Creator to reach cell-built services without cells reaching out.
+
+api:
+  dashboard: true
+  insecure: true          # Dashboard served on web entrypoint at /dashboard/
+
+entryPoints:
+  web:
+    address: ":80"
+
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true           # Auto-reload when Wiseoldant writes/removes configs
+
+log:
+  level: INFO
+
+accessLog: {}             # Log every inbound request

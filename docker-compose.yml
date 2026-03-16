@@ -1,0 +1,270 @@
+# ==========================================================================
+# Ant Colony
+# Docker Compose Stack
+# ==========================================================================
+# Start: docker compose up --build -d
+# Init:  curl -X POST http://localhost:8001/init
+# Status: curl http://localhost:8005/status
+# ==========================================================================
+
+x-common: &common
+  restart: unless-stopped
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  tmpfs:
+    - /tmp:size=64M
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  # ---------- Life Kernel -------------------------------------------------
+  kernel:
+    <<: *common
+    build: ./kernel
+    container_name: life-kernel
+    ports:
+      - "8001:8001"
+    volumes:
+      - state-data:/data/state
+      - log-data:/data/logs
+      - ./dna:/data/dna:ro
+    environment:
+      - LIFE_API_SECRET=${LIFE_API_SECRET}
+      - KERNEL_LOG_LEVEL=${KERNEL_LOG_LEVEL:-INFO}
+      - MAX_POPULATION=${MAX_POPULATION:-10}
+      - STATE_DIR=/data/state
+      - LOG_DIR=/data/logs
+      - DNA_PATH=/data/dna/SKILLS.md
+      - CELL_RUNTIME_URL=http://cell-runtime:8004
+    networks:
+      - life-net
+      - ext-net      # Host port publishing requires a non-internal network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      - guardians
+      - proxy
+
+  # ---------- Guardian Layer ----------------------------------------------
+  guardians:
+    <<: *common
+    build: ./guardians
+    container_name: life-guardians
+    # No host ports — only reachable on life-net
+    volumes:
+      - workspace-data:/data/workspace
+      - memory-data:/data/memory
+      - log-data:/data/logs
+      - ./dna:/data/dna:ro
+      - traefik-dynamic:/etc/traefik/dynamic   # Wiseoldant writes route configs here
+    environment:
+      - LIFE_API_SECRET=${LIFE_API_SECRET}
+      - KERNEL_LOG_LEVEL=${KERNEL_LOG_LEVEL:-INFO}
+      - WORKSPACE_DIR=/data/workspace
+      - MEMORY_DIR=/data/memory
+      - LOG_DIR=/data/logs
+      - KERNEL_URL=http://kernel:8001
+      - TRAEFIK_DYNAMIC_DIR=/etc/traefik/dynamic
+    networks:
+      - life-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ---------- OpenAI Proxy ------------------------------------------------
+  proxy:
+    <<: *common
+    build: ./proxy
+    container_name: life-proxy
+    # No host ports — only reachable on life-net
+    volumes:
+      - log-data:/data/logs
+    environment:
+      - LIFE_API_SECRET=${LIFE_API_SECRET}
+      - KERNEL_LOG_LEVEL=${KERNEL_LOG_LEVEL:-INFO}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - OPENAI_MODEL_ALLOWLIST=${OPENAI_MODEL_ALLOWLIST:-gpt-5-mini,gpt-4o,gpt-4o-mini}
+      - OPENAI_MAX_TOKENS_PER_REQUEST=${OPENAI_MAX_TOKENS_PER_REQUEST:-4096}
+      - OPENAI_RATE_LIMIT_RPM=${OPENAI_RATE_LIMIT_RPM:-60}
+      - PROXY_LOG_DIR=/data/logs
+    networks:
+      - life-net
+      - ext-net    # External access for upstream OpenAI API
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ---------- Cell Runtime ------------------------------------------------
+  cell-runtime:
+    <<: *common
+    build: ./cell-runtime
+    container_name: life-cell-runtime
+    # No host ports — only reachable on life-net
+    volumes:
+      - workspace-data:/data/workspace
+      - memory-data:/data/memory
+      - log-data:/data/logs
+      - ./dna:/data/dna:ro
+    environment:
+      - LIFE_API_SECRET=${LIFE_API_SECRET}
+      - KERNEL_LOG_LEVEL=${KERNEL_LOG_LEVEL:-INFO}
+      - GUARDIAN_URL=http://guardians:8002
+      - PROXY_URL=http://proxy:8003
+      - KERNEL_URL=http://kernel:8001
+      - DNA_PATH=/data/dna/SKILLS.md
+      - WORKSPACE_DIR=/data/workspace
+      - MEMORY_DIR=/data/memory
+      - LOG_DIR=/data/logs
+      - CELL_LOOP_INTERVAL=${CELL_LOOP_INTERVAL:-10}
+      - CELL_MAX_FAILURES=${CELL_MAX_FAILURES:-5}
+      - CELL_MAX_TOTAL_REPAIRS=${CELL_MAX_TOTAL_REPAIRS:-10}
+      - CELL_MODEL=${CELL_MODEL:-gpt-5-mini}
+      - WEB_UI_URL=http://web-ui:8006
+    networks:
+      - life-net
+    depends_on:
+      - guardians
+      - proxy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8004/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ---------- Traefik Ingress (One-Way Looking Glass) --------------------
+  traefik:
+    image: traefik:v3.0
+    container_name: life-traefik
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE   # bind port 80
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=16M
+    ports:
+      - "${TRAEFIK_HTTP_PORT:-80}:80"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - traefik-dynamic:/etc/traefik/dynamic:ro
+    networks:
+      - life-net
+      - ext-net
+    depends_on:
+      - guardians
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ---------- Colony Monitor ----------------------------------------------
+  monitor:
+    <<: *common
+    build: ./monitor
+    container_name: life-monitor
+    ports:
+      - "8005:8005"
+    volumes:
+      - log-data:/data/logs
+    environment:
+      - LIFE_API_SECRET=${LIFE_API_SECRET}
+      - KERNEL_LOG_LEVEL=${KERNEL_LOG_LEVEL:-INFO}
+      - KERNEL_URL=http://kernel:8001
+      - CELL_RUNTIME_URL=http://cell-runtime:8004
+      - MONITOR_CHECK_INTERVAL=${MONITOR_CHECK_INTERVAL:-15}
+      - MONITOR_HEALTH_THRESHOLD=${MONITOR_HEALTH_THRESHOLD:-20}
+      - MONITOR_REPAIR_THRESHOLD=${MONITOR_REPAIR_THRESHOLD:-40}
+      - MONITOR_STALL_SECONDS=${MONITOR_STALL_SECONDS:-120}
+      - DEAD_CLEANUP_SECONDS=${DEAD_CLEANUP_SECONDS:-300}
+      - MAX_POPULATION=${MAX_POPULATION:-10}
+      - LOG_DIR=/data/logs
+    networks:
+      - life-net
+      - ext-net      # Host port publishing requires a non-internal network
+    depends_on:
+      - kernel
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ---------- Web UI Dashboard --------------------------------------------
+  web-ui:
+    <<: *common
+    build: ./web-ui
+    container_name: life-web-ui
+    volumes:
+      - log-data:/data/logs
+      - traefik-dynamic:/etc/traefik/dynamic   # Write route config on startup
+    environment:
+      - LIFE_API_SECRET=${LIFE_API_SECRET}
+      - KERNEL_LOG_LEVEL=${KERNEL_LOG_LEVEL:-INFO}
+      - KERNEL_URL=http://kernel:8001
+      - CELL_RUNTIME_URL=http://cell-runtime:8004
+      - GUARDIAN_URL=http://guardians:8002
+      - LOG_DIR=/data/logs
+      - TRAEFIK_DYNAMIC_DIR=/etc/traefik/dynamic
+    networks:
+      - life-net
+    depends_on:
+      - kernel
+      - cell-runtime
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8006/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+# ---------- Volumes -------------------------------------------------------
+volumes:
+  state-data:
+    driver: local
+  workspace-data:
+    driver: local
+  memory-data:
+    driver: local
+  log-data:
+    driver: local
+  traefik-dynamic:
+    driver: local
+
+# ---------- Network -------------------------------------------------------
+networks:
+  life-net:
+    driver: bridge
+    name: life-network
+    internal: true   # No internet egress — cells cannot bypass the proxy
+  ext-net:
+    driver: bridge
+    name: life-external

@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ant Farm</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-size: 125%;
+            background: #0a0a1a;
+            color: #e0e0e0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: #12122a;
+            border-bottom: 1px solid #2a2a4a;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 48px;
+        }
+        .header h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #7c83ff;
+            letter-spacing: 1px;
+        }
+        .header .stats {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: #888;
+            align-items: center;
+        }
+        .stat-value { color: #7c83ff; font-weight: 600; }
+        .conn-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            display: inline-block; margin-right: 4px;
+            vertical-align: middle;
+        }
+        .conn-ok { background: #4ade80; }
+        .conn-fail { background: #ef4444; }
+
+        /* Layout */
+        .main {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            height: calc(100vh - 48px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: #0f0f24;
+            border-right: 1px solid #2a2a4a;
+            overflow-y: auto;
+            padding: 12px;
+        }
+        .section-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #555;
+            margin: 12px 0 6px 0;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #1a1a3a;
+        }
+        .section-title:first-child { margin-top: 0; }
+
+        /* Cell cards */
+        .cell-card {
+            background: #161632;
+            border: 1px solid #2a2a4a;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 6px;
+            transition: border-color 0.2s;
+        }
+        .cell-card:hover { border-color: #7c83ff; }
+        .cell-id {
+            font-size: 11px;
+            font-weight: 600;
+            color: #b0b4ff;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .cell-project {
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 6px;
+        }
+        .cell-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+        }
+        .health-bar {
+            width: 50px; height: 4px;
+            background: #2a2a4a;
+            border-radius: 2px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
+        .health-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+        .badge {
+            font-size: 9px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .s-thinking  { background: #1e3a5f; color: #60a5fa; }
+        .s-acting    { background: #1e3f1e; color: #4ade80; }
+        .s-idle      { background: #3f3f1e; color: #fbbf24; }
+        .s-dead      { background: #3f1e1e; color: #ef4444; }
+        .s-repairing { background: #3f2e1e; color: #fb923c; }
+
+        /* Service cards */
+        .svc-card {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #161632;
+            border: 1px solid #2a2a4a;
+            border-radius: 6px;
+            padding: 7px 10px;
+            margin-bottom: 5px;
+            text-decoration: none;
+            color: #e0e0e0;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .svc-card:hover { border-color: #4ade80; background: #1a1a3a; }
+        .svc-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #4ade80;
+            flex-shrink: 0;
+        }
+        .svc-dot.svc-dead { background: #f87171; }
+        .svc-info { display: flex; flex-direction: column; min-width: 0; }
+        .svc-name { font-size: 12px; font-weight: 600; }
+        .svc-desc { font-size: 10px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .svc-port { font-size: 11px; color: #666; margin-left: auto; flex-shrink: 0; }
+
+        /* Feed */
+        .feed {
+            overflow-y: auto;
+            padding: 12px 16px;
+        }
+        .event {
+            background: #12122a;
+            border: 1px solid #2a2a4a;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 6px;
+            animation: fadeIn 0.25s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .ev-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            font-size: 11px;
+        }
+        .ev-time { color: #555; font-family: monospace; font-size: 11px; }
+        .ev-cell { color: #7c83ff; font-weight: 600; }
+        .ev-cycle { color: #555; }
+        .ev-type {
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .t-act       { background: #1e3f1e; color: #4ade80; }
+        .t-idle      { background: #3f3f1e; color: #fbbf24; }
+        .t-error     { background: #3f1e1e; color: #ef4444; }
+        .t-replicate { background: #2e1e3f; color: #c084fc; }
+        .t-command   { background: #1e2e3f; color: #38bdf8; }
+        .ev-health { color: #555; margin-left: auto; font-size: 11px; }
+        .ev-thought {
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 3px;
+            line-height: 1.4;
+        }
+        .ev-action {
+            font-size: 11px;
+            color: #888;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+        }
+        .ev-result {
+            font-size: 11px;
+            color: #666;
+            margin-top: 3px;
+            padding-top: 3px;
+            border-top: 1px solid #1e1e3e;
+        }
+        .ev-error { color: #ef4444; }
+
+        .empty {
+            text-align: center;
+            color: #333;
+            padding: 80px 20px;
+        }
+        .empty .big { font-size: 48px; margin-bottom: 10px; }
+        .empty .sub { font-size: 12px; color: #2a2a4a; margin-top: 6px; }
+
+        .muted { color: #444; font-size: 11px; padding: 8px; }
+
+        /* Command button */
+        .cmd-btn {
+            background: #7c83ff;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .cmd-btn:hover { background: #5b63e0; }
+
+        /* Modal overlay */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #12122a;
+            border: 1px solid #2a2a4a;
+            border-radius: 10px;
+            padding: 24px;
+            width: 480px;
+            max-width: 90vw;
+        }
+        .modal h2 {
+            font-size: 16px;
+            color: #7c83ff;
+            margin-bottom: 12px;
+        }
+        .modal p {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 14px;
+        }
+        .modal textarea {
+            width: 100%;
+            min-height: 100px;
+            background: #0a0a1a;
+            border: 1px solid #2a2a4a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-family: inherit;
+            font-size: 13px;
+            padding: 10px;
+            resize: vertical;
+            outline: none;
+        }
+        .modal textarea:focus { border-color: #7c83ff; }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 14px;
+        }
+        .modal-actions button {
+            padding: 7px 18px;
+            border-radius: 6px;
+            border: none;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-cancel { background: #2a2a4a; color: #888; }
+        .btn-cancel:hover { background: #3a3a5a; }
+        .btn-send { background: #7c83ff; color: #fff; }
+        .btn-send:hover { background: #5b63e0; }
+        .btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 3px; }
+
+        /* Animated ants */
+        .ant-layer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 500;
+            overflow: hidden;
+        }
+        .ant-sprite {
+            position: absolute;
+            transition: none;
+            filter: drop-shadow(0 0 4px rgba(124,131,255,0.35));
+        }
+        .ant-sprite svg { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>&#x1f41c; ANT FARM</h1>
+        <div class="stats">
+            <span><span class="conn-dot" id="cdot"></span><span id="cstat">Connecting...</span></span>
+            <span>Ants: <span class="stat-value" id="nc">0</span></span>
+            <span>Services: <span class="stat-value" id="ns">0</span></span>
+            <button class="cmd-btn" onclick="openCmd()">&#x1f4e2; Command</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="cmdModal">
+        <div class="modal">
+            <h2>&#x1f4e2; Send Command to Colony</h2>
+            <p>This message will be posted to the colony bulletin board. All ants will see it on their next cycle.</p>
+            <textarea id="cmdText" placeholder="e.g. Focus on building integrations between existing services..."></textarea>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeCmd()">Cancel</button>
+                <button class="btn-send" id="cmdSend" onclick="sendCmd()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="sidebar">
+            <div class="section-title">Ants</div>
+            <div id="cells"></div>
+            <div class="section-title">Services</div>
+            <div id="svcs"></div>
+        </div>
+        <div class="feed" id="feed">
+            <div class="empty" id="empty">
+                <div class="big">&#x1f9eb;</div>
+                <div>Waiting for ant activity&hellip;</div>
+                <div class="sub">Events will stream here in real-time</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+/* ===== State ===== */
+const feed    = document.getElementById('feed');
+const cdot    = document.getElementById('cdot');
+const cstat   = document.getElementById('cstat');
+const ncEl    = document.getElementById('nc');
+const nsEl    = document.getElementById('ns');
+const cellsEl = document.getElementById('cells');
+const svcsEl  = document.getElementById('svcs');
+const empty   = document.getElementById('empty');
+const MAX_EVENTS = 250;
+let ws;
+
+/* ===== Helpers ===== */
+function antName(id) { return id ? id.replace(/cell-/g, 'ant-') : ''; }
+function esc(t) {
+    if (!t) return '';
+    const s = typeof t === 'string' ? t : JSON.stringify(t);
+    const d = document.createElement('div');
+    d.textContent = s.length > 600 ? s.substring(0, 600) + '...' : s;
+    return d.innerHTML;
+}
+function hColor(h) {
+    return h >= 70 ? '#4ade80' : h >= 40 ? '#fbbf24' : '#ef4444';
+}
+function fmtTime(ts) {
+    return ts ? new Date(ts * 1000).toLocaleTimeString() : new Date().toLocaleTimeString();
+}
+
+/* ===== WebSocket ===== */
+function connect() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(proto + '//' + location.host + '/ws');
+    ws.onopen = () => { cdot.className = 'conn-dot conn-ok'; cstat.textContent = 'Live'; };
+    ws.onclose = () => { cdot.className = 'conn-dot conn-fail'; cstat.textContent = 'Reconnecting...'; setTimeout(connect, 3000); };
+    ws.onerror = () => ws.close();
+    ws.onmessage = e => addEvent(JSON.parse(e.data));
+}
+
+function addEvent(ev) {
+    if (empty && empty.parentNode) empty.remove();
+
+    const el = document.createElement('div');
+    el.className = 'event';
+
+    const tCls = { act: 't-act', idle: 't-idle', error: 't-error', replicate: 't-replicate', command: 't-command' }[ev.type] || 't-act';
+
+    let h = '<div class="ev-header">'
+        + '<span class="ev-time">' + fmtTime(ev.server_ts) + '</span>'
+        + '<span class="ev-cell">' + esc(antName(ev.cell_id)) + '</span>'
+        + '<span class="ev-cycle">cycle ' + (ev.cycle || '?') + '</span>'
+        + '<span class="ev-type ' + tCls + '">' + esc(ev.type) + '</span>'
+        + '<span class="ev-health">&hearts; ' + (ev.health != null ? ev.health : '?') + '</span>'
+        + '</div>';
+
+    if (ev.thought) h += '<div class="ev-thought">' + antName(esc(ev.thought)) + '</div>';
+    if (ev.endpoint) {
+        h += '<div class="ev-action">&#x25b8; ' + esc(ev.endpoint);
+        if (ev.params_summary) h += ' &mdash; ' + antName(esc(ev.params_summary));
+        h += '</div>';
+    }
+    if (ev.result_summary) h += '<div class="ev-result">&rarr; ' + antName(esc(ev.result_summary)) + '</div>';
+    if (ev.error) h += '<div class="ev-result ev-error">&#x26a0; ' + esc(ev.error) + '</div>';
+
+    el.innerHTML = h;
+    feed.appendChild(el);
+
+    while (feed.children.length > MAX_EVENTS) feed.removeChild(feed.firstChild);
+
+    const nearBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 250;
+    if (nearBottom) feed.scrollTop = feed.scrollHeight;
+}
+
+/* ===== Periodic state refresh ===== */
+async function refresh() {
+    try {
+        const r = await fetch('/api/state');
+        if (!r.ok) return;
+        const s = await r.json();
+        renderCells(s.cells || {});
+        renderServices(s.services || []);
+    } catch (_) {}
+}
+
+function renderCells(cells) {
+    const ids = Object.keys(cells);
+    ncEl.textContent = ids.length;
+    // Sync animated ants with live cells
+    if (typeof syncAnts === 'function') syncAnts(ids);
+    if (!ids.length) { cellsEl.innerHTML = '<div class="muted">No ants running</div>'; return; }
+    cellsEl.innerHTML = ids.map(id => {
+        const c = cells[id];
+        const h = c.health || 0;
+        const st = c.status || 'idle';
+        const sc = 's-' + st;
+        const proj = c.project || '';
+        return '<div class="cell-card">'
+            + '<div class="cell-id">' + esc(antName(id)) + '</div>'
+            + (proj ? '<div class="cell-project">&#x1f4c1; ' + esc(antName(proj)) + '</div>' : '')
+            + '<div class="cell-meta">'
+            +   '<span><span class="health-bar"><span class="health-fill" style="width:' + h + '%;background:' + hColor(h) + '"></span></span>' + h + '</span>'
+            +   '<span style="color:#555">c:' + (c.cycle || 0) + '</span>'
+            +   '<span class="badge ' + sc + '">' + st + '</span>'
+            + '</div></div>';
+    }).join('');
+}
+
+function renderServices(services) {
+    const up = services.filter(s => s.running);
+    nsEl.textContent = up.length;
+    if (!services.length) { svcsEl.innerHTML = '<div class="muted">No services</div>'; return; }
+    svcsEl.innerHTML = services.map(s => {
+        const href = s.running && s.external_path ? (location.protocol + '//' + location.host + s.external_path) : '#';
+        const dotClass = s.running ? 'svc-dot' : 'svc-dot svc-dead';
+        const statusLabel = s.running ? '' : ' <span style="color:#f87171;font-size:0.7em">(crashed)</span>';
+        return '<a class="svc-card" href="' + esc(href) + '" target="_blank" style="' + (s.running ? '' : 'opacity:0.5') + '">'
+            + '<span class="' + dotClass + '"></span>'
+            + '<div class="svc-info"><span class="svc-name">' + esc(antName(s.name)) + statusLabel + '</span>'
+            + (s.description ? '<span class="svc-desc">' + esc(s.description) + '</span>' : '') + '</div>'
+            + '<span class="svc-port">:' + (s.port || '?') + '</span></a>';
+    }).join('');
+}
+
+/* ===== Command modal ===== */
+function openCmd() { document.getElementById('cmdModal').classList.add('open'); document.getElementById('cmdText').focus(); }
+function closeCmd() { document.getElementById('cmdModal').classList.remove('open'); document.getElementById('cmdText').value = ''; }
+async function sendCmd() {
+    const ta = document.getElementById('cmdText');
+    const btn = document.getElementById('cmdSend');
+    const msg = ta.value.trim();
+    if (!msg) return;
+    btn.disabled = true; btn.textContent = 'Sending...';
+    try {
+        const r = await fetch('/api/command', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({message: msg}) });
+        if (r.ok) { closeCmd(); } else { alert('Failed to send command'); }
+    } catch(e) { alert('Error: ' + e.message); }
+    btn.disabled = false; btn.textContent = 'Send';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCmd(); });
+
+/* ===== Init ===== */
+connect();
+refresh();
+setInterval(refresh, 5000);
+</script>
+
+<!-- Ant layer -->
+<div class="ant-layer" id="antLayer"></div>
+
+<script>
+/* ===== Animated SVG Ants — 10 distinct silhouette variants ===== */
+const ANT_SVGS = [
+  // 0: Worker — balanced proportions
+  '<svg viewBox="0 0 100 100"><g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
+    '<ellipse cx="50" cy="74" rx="13" ry="15"/>' +
+    '<ellipse cx="50" cy="58" rx="3" ry="2"/>' +
+    '<ellipse cx="50" cy="46" rx="8" ry="9"/>' +
+    '<ellipse cx="50" cy="30" rx="7" ry="6"/>' +
+    '<path d="M44 26 L38 16 L30 8" stroke-width="2" fill="none"/>' +
+    '<path d="M56 26 L62 16 L70 8" stroke-width="2" fill="none"/>' +
+    '<path d="M43 40 L30 32 L18 26" stroke-width="2" fill="none"/>' +
+    '<path d="M57 40 L70 32 L82 26" stroke-width="2" fill="none"/>' +
+    '<path d="M43 50 L28 48 L14 40" stroke-width="2" fill="none"/>' +
+    '<path d="M57 50 L72 48 L86 40" stroke-width="2" fill="none"/>' +
+    '<path d="M44 68 L32 72 L22 66" stroke-width="2" fill="none"/>' +
+    '<path d="M56 68 L68 72 L78 66" stroke-width="2" fill="none"/>' +
+  '</g></svg>',
+
+  // 1: Big Head — large round head, shorter legs
+  '<svg viewBox="0 0 100 100"><g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
+    '<ellipse cx="50" cy="72" rx="12" ry="14"/>' +
+    '<ellipse cx="50" cy="56" rx="3" ry="2"/>' +
+    '<ellipse cx="50" cy="44" rx="7" ry="8"/>' +
+    '<ellipse cx="50" cy="26" rx="10" ry="8"/>' +
+    '<path d="M42 20 L34 10 L26 4" stroke-width="2.5" fill="none"/>' +
+    '<path d="M58 20 L66 10 L74 4" stroke-width="2.5" fill="none"/>' +
+    '<path d="M44 38 L34 30 L24 26" stroke-width="2" fill="none"/>' +
+    '<path d="M56 38 L66 30 L76 26" stroke-width="2" fill="none"/>' +
+    '<path d="M44 48 L32 48 L22 42" stroke-width="2" fill="none"/>' +
+    '<path d="M56 48 L68 48 L78 42" stroke-width="2" fill="none"/>' +
+    '<path d="M44 66 L36 72 L28 68" stroke-width="2" fill="none"/>' +
+    '<path d="M56 66 L64 72 L72 68" stroke-width="2" fill="none"/>' +
+  '</g></svg>',
+
+  // 2: Long Legs — thin body, extended spindly legs
+  '<svg viewBox="0 0 100 100"><g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
+    '<ellipse cx="50" cy="74" rx="10" ry="12"/>' +
+    '<ellipse cx="50" cy="60" rx="2.5" ry="2"/>' +
+    '<ellipse cx="50" cy="50" rx="6" ry="7"/>' +
+    '<ellipse cx="50" cy="36" rx="5.5" ry="5"/>' +
+    '<path d="M46 32 L40 20 L32 8" stroke-width="1.8" fill="none"/>' +
+    '<path d="M54 32 L60 20 L68 8" stroke-width="1.8" fill="none"/>' +
+    '<path d="M45 44 L28 34 L10 26" stroke-width="1.8" fill="none"/>' +
+    '<path d="M55 44 L72 34 L90 26" stroke-width="1.8" fill="none"/>' +
+    '<path d="M45 54 L24 52 L6 42" stroke-width="1.8" fill="none"/>' +
+    '<path d="M55 54 L76 52 L94 42" stroke-width="1.8" fill="none"/>' +
+    '<path d="M44 68 L28 74 L14 68" stroke-width="1.8" fill="none"/>' +
+    '<path d="M56 68 L72 74 L86 68" stroke-width="1.8" fill="none"/>' +
+  '</g></svg>',
+
+  // 3: Fire ant — thick, elongated thorax
+  '<svg viewBox="0 0 100 100"><g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
+    '<ellipse cx="50" cy="76" rx="11" ry="17"/>' +
+    '<ellipse cx="50" cy="56" rx="3.5" ry="3"/>' +
+    '<ellipse cx="50" cy="42" rx="9" ry="11"/>' +
+    '<ellipse cx="50" cy="24" rx="7.5" ry="6"/>' +
+    '<path d="M44 20 L36 10 L28 4" stroke-width="2.2" fill="none"/>' +
+    '<path d="M56 20 L64 10 L72 4" stroke-width="2.2" fill="none"/>' +
+    '<path d="M42 34 L28 26 L16 20" stroke-width="2.5" fill="none"/>' +
+    '<path d="M58 34 L72 26 L84 20" stroke-width="2.5" fill="none"/>' +
+    '<path d="M42 46 L26 44 L12 36" stroke-width="2.5" fill="none"/>' +
+    '<path d="M58 46 L74 44 L88 36" stroke-width="2.5" fill="none"/>' +
+    '<path d="M44 68 L30 72 L18 66" stroke-width="2.5" fill="none"/>' +
+    '<path d="M56 68 L70 72 L82 66" stroke-width="2.5" fill="none"/>' +
+  '</g></svg>',
+
+  // 4: Carpenter — large head, mandible-like antenna curves
+  '<svg viewBox="0 0 100 100"><g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
+    '<ellipse cx="50" cy="74" rx="12" ry="15"/>' +
+    '<ellipse cx="50" cy="58" rx="3" ry="2"/>' +
+    '<ellipse cx="50" cy="46" rx="9" ry="9"/>' +
+    '<ellipse cx="50" cy="28" rx="9" ry="8"/>' +
+    '<path d="M42 24 L36 18 L38 8" stroke-width="2.5" fill="none"/>' +
+    '<path d="M58 24 L64 18 L62 8" stroke-width="2.5" fill="none"/>' +
+    '<path d="M44 22 L38 18 L32 20" stroke-width="2" fill="none"/>' +
+    '<path d="M56 22 L62 18 L68 20" stroke-width="2" fill="none"/>' +
+    '<path d="M42 40 L30 32 L18 26" stroke-width="2.2" fill="none"/>' +
+    '<path d="M58 40 L70 32 L82 26" stroke-width="2.2" fill="none"/>' +
+    '<path d="M42 50 L28 50 L16 42" stroke-width="2.2" fill="none"/>' +
+    '<path d="M58 50 L72 50 L84 42" stroke-width="2.2" fill="none"/>' +
+    '<path d="M44 68 L32 74 L22 70" stroke-width="2.2" fill="none"/>' +
+    '<path d="M56 68 L68 74 L78 70" stroke-width="2.2" fill="none"/>' +
+  '</g></svg>',
+
+  // 5: Slim scout — narrow, delicate
+  '<svg viewBox="0 0 100 100"><g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
+    '<ellipse cx="50" cy="76" rx="9" ry="13"/>' +
+    '<ellipse cx="50" cy="62" rx="2" ry="2"/>' +
+    '<ellipse cx="50" cy="50" rx="5.5" ry="7"/>' +
+    '<ellipse cx="50" cy="36" rx="5" ry="5"/>' +
+    '<path d="M47 32 L42 20 L36 8" stroke-width="1.5" fill="none"/>' +
+    '<path d="M53 32 L58 20 L64 8" stroke-width="1.5" fill="none"/>' +
+    '<path d="M46 44 L34 36 L22 30" stroke-width="1.6" fill="none"/>' +
+    '<path d="M54 44 L66 36 L78 30" stroke-width="1.6" fill="none"/>' +
+    '<path d="M46 52 L32 52 L20 46" stroke-width="1.6" fill="none"/>' +
+    '<path d="M54 52 L68 52 L80 46" stroke-width="1.6" fill="none"/>' +
+    '<path d="M45 70 L34 76 L24 72" stroke-width="1.6" fill="none"/>' +
+    '<path d="M55 70 L66 76 L76 72" stroke-width="1.6" fill="none"/>' +
+  '</g></svg>',
+
+  // 6: Leaf-cutter — tiny head, HUGE abdomen
+  '<svg viewBox="0 0 100 100"><g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
+    '<ellipse cx="50" cy="72" rx="18" ry="20"/>' +
+    '<ellipse cx="50" cy="48" rx="3" ry="3"/>' +
+    '<ellipse cx="50" cy="38" rx="7" ry="7"/>' +
+    '<ellipse cx="50" cy="24" rx="5" ry="4.5"/>' +
+    '<path d="M47 20 L42 12 L38 4" stroke-width="1.8" fill="none"/>' +
+    '<path d="M53 20 L58 12 L62 4" stroke-width="1.8" fill="none"/>' +
+    '<path d="M44 32 L32 26 L22 22" stroke-width="2" fill="none"/>' +
+    '<path d="M56 32 L68 26 L78 22" stroke-width="2" fill="none"/>' +
+    '<path d="M44 42 L30 42 L18 36" stroke-width="2" fill="none"/>' +
+    '<path d="M56 42 L70 42 L82 36" stroke-width="2" fill="none"/>' +
+    '<path d="M40 64 L26 68 L16 62" stroke-width="2" fill="none"/>' +
+    '<path d="M60 64 L74 68 L84 62" stroke-width="2" fill="none"/>' +
+  '</g></svg>',
+
+  // 7: Bullet — thick, compact, short legs
+  '<svg viewBox="0 0 100 100"><g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
+    '<ellipse cx="50" cy="72" rx="15" ry="15"/>' +
+    '<ellipse cx="50" cy="55" rx="4" ry="3"/>' +
+    '<ellipse cx="50" cy="42" rx="11" ry="10"/>' +
+    '<ellipse cx="50" cy="26" rx="8.5" ry="7"/>' +
+    '<path d="M43 22 L36 12 L30 6" stroke-width="2.5" fill="none"/>' +
+    '<path d="M57 22 L64 12 L70 6" stroke-width="2.5" fill="none"/>' +
+    '<path d="M40 36 L30 30 L22 26" stroke-width="2.5" fill="none"/>' +
+    '<path d="M60 36 L70 30 L78 26" stroke-width="2.5" fill="none"/>' +
+    '<path d="M40 48 L28 48 L20 42" stroke-width="2.5" fill="none"/>' +
+    '<path d="M60 48 L72 48 L80 42" stroke-width="2.5" fill="none"/>' +
+    '<path d="M42 66 L34 70 L26 66" stroke-width="2.5" fill="none"/>' +
+    '<path d="M58 66 L66 70 L74 66" stroke-width="2.5" fill="none"/>' +
+  '</g></svg>',
+
+  // 8: Army ant — legs spread very wide
+  '<svg viewBox="0 0 100 100"><g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
+    '<ellipse cx="50" cy="74" rx="12" ry="14"/>' +
+    '<ellipse cx="50" cy="58" rx="3" ry="2"/>' +
+    '<ellipse cx="50" cy="46" rx="8" ry="9"/>' +
+    '<ellipse cx="50" cy="30" rx="7" ry="6"/>' +
+    '<path d="M44 26 L34 16 L24 8" stroke-width="2" fill="none"/>' +
+    '<path d="M56 26 L66 16 L76 8" stroke-width="2" fill="none"/>' +
+    '<path d="M42 40 L24 28 L8 20" stroke-width="2.2" fill="none"/>' +
+    '<path d="M58 40 L76 28 L92 20" stroke-width="2.2" fill="none"/>' +
+    '<path d="M42 50 L22 48 L4 38" stroke-width="2.2" fill="none"/>' +
+    '<path d="M58 50 L78 48 L96 38" stroke-width="2.2" fill="none"/>' +
+    '<path d="M44 68 L28 76 L14 72" stroke-width="2.2" fill="none"/>' +
+    '<path d="M56 68 L72 76 L86 72" stroke-width="2.2" fill="none"/>' +
+  '</g></svg>',
+
+  // 9: Harvest — distinctive narrow waist, long antennae
+  '<svg viewBox="0 0 100 100"><g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
+    '<ellipse cx="50" cy="76" rx="14" ry="14"/>' +
+    '<ellipse cx="50" cy="60" rx="2" ry="3"/>' +
+    '<ellipse cx="50" cy="48" rx="7" ry="8"/>' +
+    '<ellipse cx="50" cy="32" rx="6.5" ry="5.5"/>' +
+    '<path d="M45 28 L38 14 L28 4" stroke-width="2" fill="none"/>' +
+    '<path d="M55 28 L62 14 L72 4" stroke-width="2" fill="none"/>' +
+    '<path d="M44 42 L32 34 L20 28" stroke-width="2" fill="none"/>' +
+    '<path d="M56 42 L68 34 L80 28" stroke-width="2" fill="none"/>' +
+    '<path d="M44 52 L30 52 L16 46" stroke-width="2" fill="none"/>' +
+    '<path d="M56 52 L70 52 L84 46" stroke-width="2" fill="none"/>' +
+    '<path d="M44 70 L32 76 L20 72" stroke-width="2" fill="none"/>' +
+    '<path d="M56 70 L68 76 L80 72" stroke-width="2" fill="none"/>' +
+  '</g></svg>'
+];
+
+const ANT_COLORS = [
+  '#7c83ff', '#9498ff', '#6a70dd', '#8b92ff', '#5c63bb',
+  '#a0a4ff', '#7070bb', '#8888dd', '#6666aa', '#b0b4ff'
+];
+const ANT_SIZES = [44, 46, 50, 44, 48, 40, 52, 48, 46, 44];
+
+const antLayer = document.getElementById('antLayer');
+const liveAnts = {};  // cellId -> { el, x, y, angle, speed, turnTimer, wobble, size }
+
+function spawnAnt(cellId) {
+    if (liveAnts[cellId]) return;
+    const variant = Math.floor(Math.random() * ANT_SVGS.length);
+    const color = ANT_COLORS[variant];
+    const sz = ANT_SIZES[variant];
+    const el = document.createElement('div');
+    el.className = 'ant-sprite';
+    el.title = antName(cellId);
+    el.innerHTML = ANT_SVGS[variant];
+    el.style.color = color;
+    el.style.width = sz + 'px';
+    el.style.height = sz + 'px';
+    antLayer.appendChild(el);
+    const x = Math.random() * (window.innerWidth - sz);
+    const y = Math.random() * (window.innerHeight - sz);
+    const angle = Math.random() * 360;
+    liveAnts[cellId] = { el, x, y, angle, speed: 0.6 + Math.random() * 0.8, turnTimer: 0, wobble: Math.random() * 1000, size: sz };
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+}
+
+function removeAnt(cellId) {
+    const ant = liveAnts[cellId];
+    if (!ant) return;
+    ant.el.remove();
+    delete liveAnts[cellId];
+}
+
+function syncAnts(cellIds) {
+    const active = new Set(cellIds);
+    for (const id of active) spawnAnt(id);
+    for (const id of Object.keys(liveAnts)) {
+        if (!active.has(id)) removeAnt(id);
+    }
+}
+
+/* Physics tick */
+let lastTick = performance.now();
+function tickAnts(now) {
+    const dt = Math.min(now - lastTick, 50);
+    lastTick = now;
+
+    for (const [id, ant] of Object.entries(liveAnts)) {
+        ant.turnTimer -= dt;
+        if (ant.turnTimer <= 0) {
+            ant.angle += (Math.random() - 0.5) * 90;
+            ant.turnTimer = 800 + Math.random() * 2000;
+            ant.speed = 0.5 + Math.random() * 1.0;
+        }
+
+        ant.wobble += dt * 0.003;
+        const wobbleAngle = Math.sin(ant.wobble) * 12;
+
+        const rad = (ant.angle + wobbleAngle) * Math.PI / 180;
+        ant.x += Math.cos(rad) * ant.speed * (dt / 16);
+        ant.y += Math.sin(rad) * ant.speed * (dt / 16);
+
+        const W = window.innerWidth - ant.size;
+        const H = window.innerHeight - ant.size;
+        if (ant.x < 0)  { ant.x = 0;  ant.angle = 180 - ant.angle; }
+        if (ant.x > W)  { ant.x = W;  ant.angle = 180 - ant.angle; }
+        if (ant.y < 0)  { ant.y = 0;  ant.angle = -ant.angle; }
+        if (ant.y > H)  { ant.y = H;  ant.angle = -ant.angle; }
+
+        ant.el.style.left = ant.x + 'px';
+        ant.el.style.top  = ant.y + 'px';
+        const visualAngle = ant.angle + wobbleAngle + 90;
+        ant.el.style.transform = 'rotate(' + visualAngle + 'deg)';
+    }
+    requestAnimationFrame(tickAnts);
+}
+requestAnimationFrame(tickAnts);
+</script>
+</body>
+</html>

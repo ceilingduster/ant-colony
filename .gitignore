@@ -1,0 +1,10 @@
+.env
+ssh_priv_key
+__pycache__/
+*.pyc
+workspace/*
+!workspace/.gitkeep
+memory/*
+!memory/.gitkeep
+logs/*
+!logs/.gitkeep

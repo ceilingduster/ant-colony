@@ -1,0 +1,9 @@
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+httpx>=0.27,<1
+pydantic>=2,<3
+# Common packages that cell-authored services need
+flask>=3,<4
+requests>=2.31,<3
+jinja2>=3,<4
+markdown>=3,<4
