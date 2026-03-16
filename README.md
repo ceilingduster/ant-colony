@@ -13,6 +13,11 @@ This was meant to be an autonomous 'life' experiment where LLM-powered 'ants' li
 Ian Redden <github.com/ceilingduster>
 [☕ Buy Me a Coffee](https://buymeacoffee.com/ceilingduster)
 
+# Pictures
+
+![Image 1](docs/one.png)
+![Image 1](docs/two.png)
+
 # Quick Install
 
 1. Install Ubuntu.
