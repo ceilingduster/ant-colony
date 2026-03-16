@@ -6,7 +6,7 @@ This was meant to be an autonomous 'life' experiment where LLM-powered 'ants' li
 
 ## Details
 
-Every ant makes API calls every cycle, 24/7. If you point this at a cloud provider such as Ollama, **it will burn through your token budget fast**. Use a local instance of Ollama for extended runs, or set strict rate limits in your proxy config. You have been warned!
+Every ant makes API calls every cycle, 24/7. If you point this at a cloud provider such as OpenAI, **it will burn through your token budget fast**. Use a local instance of Ollama for extended runs, or set strict rate limits in your proxy config. You have been warned!
 
 However, local models may not give the results intended.  I have been running this on Qwen2.5-Coder:7B on a mobile NVidia 4090 on my laptop.  It's not the smartest model out there, but does spin up and down projects.  I guess it comes down to how smart you want your ant colony and how much you're willing to pay for it.
 
