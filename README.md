@@ -11,6 +11,7 @@ This was meant to be an autonomous 'life' experiment where LLM-powered 'ants' li
 # Author
 
 Ian Redden <github.com/ceilingduster>
+buymeacoffee.com/ceilingduster
 
 # Quick Install
 
